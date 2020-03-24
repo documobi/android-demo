@@ -1,41 +1,50 @@
 package com.brandactif.brandactif;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
-import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.media.Image;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import com.brandactif.brandactif.model.MediaScanResponse;
-import com.brandactif.brandactif.model.RadioScanDetail;
+import com.brandactif.brandactif.model.MetaData;
+import com.brandactif.brandactif.model.RadioScan;
 import com.brandactif.brandactif.model.ScanDetail;
-import com.brandactif.brandactif.model.ScanResponse;
-import com.brandactif.brandactif.model.TvScanDetail;
+import com.brandactif.brandactif.model.TvScan;
+import com.brandactif.brandactif.model.VideoScan;
 import com.brandactif.brandactif.network.APIClient;
 import com.brandactif.brandactif.network.APIInterface;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-import static android.Manifest.permission.ACCESS_COARSE_LOCATION;
-import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-
-public class MainActivity extends AppCompatActivity implements LocationListener {
+public class MainActivity extends AppCompatActivity {
 
     enum ScanType {
         SCANNER, TV, RADIO, VIDEO
@@ -51,12 +60,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private final double jpegQuality = 90.0;
     private final double redirectDelay = 1.5; // seconds
 
-    protected LocationManager locationManager;
-    protected LocationListener locationListener;
-
-    private String tvUuid = "";
-    private String radioUuid = "";
-    private String videoUuid = "";
+    private String tvUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
+    private String radioUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
+    private String videoUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private Color backgroundColor;
     private String logo = "";
     private boolean settingsEnabled = false;
@@ -78,20 +84,40 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
     private APIInterface apiInterface;
 
+    private FusedLocationProviderClient fusedLocationClient;
+    private final int locationRequestCode = 1000;
+    private final int cameraRequestCode = 2000;
+    private final int phoneStateRequestCode = 1000;
+    private Location currentLocation;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA, Manifest.permission.READ_PHONE_STATE},
+                    cameraRequestCode);
         } else {
-            // Permission to access the location is missing. Show rationale and request permission
-            ActivityCompat.requestPermissions(this, new String[]{ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_CODE);
-            Log.e(TAG, "No location permissions!");
-            return;
+            // already permission granted
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+                                Log.d(TAG, "Current location = lat:" + location.getLatitude() + ". lon:" + location.getLongitude());
+                                currentLocation = location;
+                            }
+                        }
+                    });
         }
+
 
         imgLogo = findViewById(R.id.imgLogo);
         btnMain = findViewById(R.id.btnMain);
@@ -136,49 +162,66 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
     @Override
-    public void onLocationChanged(Location location) {
-        Log.d(TAG, "Latitude:" + location.getLatitude() + ", Longitude:" + location.getLongitude());
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-        Log.d(TAG,"Location disabled");
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-        Log.d(TAG,"Location enabled");
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-        Log.d(TAG,"Location status changed to " + status);
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case locationRequestCode: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+                    fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            // Logic to handle location object
+                            Log.d(TAG, "Current location = lat:" + location.getLatitude() + ". lon:" + location.getLongitude());
+                            currentLocation = location;
+                        }
+                    });
+                } else {
+                    Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            }
+        }
     }
 
     void mainButtonTapped() {
+        double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
+        double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
+
         switch (mainButtonType) {
             case SCANNER:
                 Log.d(TAG, "Doing image scan!");
+                // Get image from camera
                 //createScan();
-                showingImagePicker = true;
                 break;
             case RADIO:
                 Log.d(TAG, "Doing radio scan!");
-                //RadioScanDetail detail = new RadioScanDetail(String radioUuid,
-                 //       String time, double latitude, double longitude, MetaData metaData);
-
-                //createRadioScan(detail);
+                RadioScan radioScan = new RadioScan(radioUuid,
+                        getIso8601Date(),
+                        latitude,
+                        longitude,
+                        getMetaData());
+                createRadioScan(radioScan);
                 break;
             case TV:
                 Log.d(TAG, "Doing TV scan!");
-                //RadioScanDetail detail = new RadioScanDetail(String radioUuid,
-                   //     String time, double latitude, double longitude, MetaData metaData);
-
-                //createTvScan(detail);
+                TvScan tvScan = new TvScan(tvUuid,
+                        getIso8601Date(),
+                        latitude,
+                        longitude,
+                        getMetaData());
+                createTvScan(tvScan);
                 break;
             case VIDEO:
                 Log.d(TAG, "Doing video scan!");
-                //self.createVideoScan(uuid: settings.videoUuid, time: Date().iso8601 )
+                /*
+                VideoScan videoScan = new VideoScan(videoUuid,
+                        getIso8601Time(),
+                        latitude,
+                        longitude,
+                        getMetaData());
+                createVideoScan(videoScan);
+                 */
                 break;
         }
     }
@@ -249,6 +292,21 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         }
     }
 
+    String getIso8601Date() {
+        String iso8601Date = ZonedDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        Log.d(TAG, "Current time = " + iso8601Date);
+        return iso8601Date;
+    }
+
+    MetaData getMetaData() {
+        return new MetaData(Build.getSerial(),
+                "Android",
+                Build.VERSION.RELEASE,
+                "Chrome",
+                Locale.getDefault().getLanguage(),
+                Build.BRAND + " " + Build.MODEL);
+    }
+
     void createScan(ScanDetail scanDetail) {
         /*
         Call<String> call = apiInterface.createScan(apiKey, contentType, scanDetail);
@@ -285,19 +343,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
          */
     }
 
-    void createRadioScan(RadioScanDetail detail) {
-        Call<MediaScanResponse> call = apiInterface.createRadioScan(API_KEY, CONTENT_TYPE, detail);
+    void createRadioScan(RadioScan radioScan) {
+        Call<MediaScanResponse> call = apiInterface.createRadioScan(API_KEY, CONTENT_TYPE, radioScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d("TAG", response.code() + "");
+                Log.d(TAG, response.code() + "");
 
                 String displayResponse = "";
 
                 MediaScanResponse resource = response.body();
-                String redirectUrl = resource.getRedirectUrl();
-                Map<String, String> details = resource.getResponseDetails();
+                if (resource != null) {
+                    String redirectUrl = resource.getRedirectUrl();
+                    Map<String, String> details = resource.getResponseDetails();
 
+                    Log.d(TAG, "Redirect URL = " + redirectUrl);
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                    startActivity(browserIntent);
+                }
             }
 
             @Override
@@ -307,19 +370,51 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         });
     }
 
-    void createTvScan(TvScanDetail detail) {
-        Call<MediaScanResponse> call = apiInterface.createTvScan(API_KEY, CONTENT_TYPE, detail);
+    void createTvScan(TvScan tvScan) {
+        Call<MediaScanResponse> call = apiInterface.createTvScan(API_KEY, CONTENT_TYPE, tvScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d("TAG", response.code() + "");
+                Log.d(TAG, response.code() + "");
 
                 String displayResponse = "";
 
                 MediaScanResponse resource = response.body();
-                String redirectUrl = resource.getRedirectUrl();
-                Map<String, String> details = resource.getResponseDetails();
+                if (resource != null) {
+                    String redirectUrl = resource.getRedirectUrl();
+                    Map<String, String> details = resource.getResponseDetails();
 
+                    Log.d(TAG, "Redirect URL = " + redirectUrl);
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                    startActivity(browserIntent);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MediaScanResponse> call, Throwable t) {
+                call.cancel();
+            }
+        });
+    }
+
+    void createVideoScan(VideoScan videoScan) {
+        Call<MediaScanResponse> call = apiInterface.createVideoScan(API_KEY, CONTENT_TYPE, videoScan);
+        call.enqueue(new Callback<MediaScanResponse>() {
+            @Override
+            public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
+                Log.d(TAG, response.code() + "");
+
+                String displayResponse = "";
+
+                MediaScanResponse resource = response.body();
+                if (resource != null) {
+                    String redirectUrl = resource.getRedirectUrl();
+                    Map<String, String> details = resource.getResponseDetails();
+
+                    Log.d(TAG, "Redirect URL = " + redirectUrl);
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                    startActivity(browserIntent);
+                }
             }
 
             @Override

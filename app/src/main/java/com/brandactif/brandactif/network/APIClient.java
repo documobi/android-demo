@@ -13,7 +13,7 @@ public class APIClient {
         OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://portal-api-staging.brandactif.com/api/v2/")
+                .baseUrl("https://portal-api-staging.brandactif.com/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .client(httpClient.build())
                 .build();
