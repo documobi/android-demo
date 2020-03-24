@@ -1,10 +1,10 @@
 package com.brandactif.brandactif.network;
 
 import com.brandactif.brandactif.model.MediaScanResponse;
-import com.brandactif.brandactif.model.PresignedUrlBody;
+import com.brandactif.brandactif.model.PresignedUrl;
 import com.brandactif.brandactif.model.PresignedUrlResponse;
 import com.brandactif.brandactif.model.RadioScan;
-import com.brandactif.brandactif.model.ScanDetail;
+import com.brandactif.brandactif.model.Scan;
 import com.brandactif.brandactif.model.ScanResponse;
 import com.brandactif.brandactif.model.TvScan;
 import com.brandactif.brandactif.model.VideoScan;
@@ -20,14 +20,14 @@ import retrofit2.http.Query;
 public interface APIInterface {
 
     @POST("api/v2/presigned_url")
-    Call<PresignedUrlResponse> uploadImageToS3(@Header("api-key") String apiKey,
+    Call<PresignedUrlResponse> getPresignedUrl(@Header("api-key") String apiKey,
                                                @Header("content-type") String contentType,
-                                               @Body PresignedUrlBody presignedUrlBody);
+                                               @Body PresignedUrl presignedUrl);
 
     @POST("api/v2/scans")
     Call<String> createScan(@Header("api-key") String apiKey,
                             @Header("content-type") String contentType,
-                            @Body ScanDetail scanDetail);
+                            @Body Scan scan);
 
     @GET("api/v2/scans/{uuid}")
     Call<ScanResponse> getScan(@Header("api-key") String apiKey,

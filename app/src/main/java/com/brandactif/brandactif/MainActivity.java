@@ -1,14 +1,18 @@
 package com.brandactif.brandactif;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Location;
-import android.media.Image;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -22,8 +26,10 @@ import androidx.core.app.ActivityCompat;
 
 import com.brandactif.brandactif.model.MediaScanResponse;
 import com.brandactif.brandactif.model.MetaData;
+import com.brandactif.brandactif.model.PresignedUrl;
+import com.brandactif.brandactif.model.PresignedUrlResponse;
 import com.brandactif.brandactif.model.RadioScan;
-import com.brandactif.brandactif.model.ScanDetail;
+import com.brandactif.brandactif.model.Scan;
 import com.brandactif.brandactif.model.TvScan;
 import com.brandactif.brandactif.model.VideoScan;
 import com.brandactif.brandactif.network.APIClient;
@@ -32,32 +38,47 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-import java.time.Instant;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
 
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.http.Body;
+import retrofit2.http.PUT;
+import retrofit2.http.Url;
 
 public class MainActivity extends AppCompatActivity {
+
+    interface UpdateImageInterface {
+        @PUT
+        Call<Void> updateImage(@Url String url, @Body RequestBody image);
+    }
 
     enum ScanType {
         SCANNER, TV, RADIO, VIDEO
     }
 
     private final String TAG = "MainActivity";
-    private static final int PERMISSION_REQUEST_CODE = 200;
+    private final int PERMISSION_REQUEST_CODE = 200;
+    private final String IMAGE_FILENAME = "image.jpg";
+    private final String KEY_SCAN_UUID = "scan_uuid";
+    private final String KEY_PRESIGNED_URL = "presigned_url";
 
     private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private final String CONTENT_TYPE = "application/json";
-    private final String imageFilename = "image.jpg";
-    private final double imageWidth = 400.0;
-    private final double jpegQuality = 90.0;
+    private final double IMAGE_WIDTH = 400.0;
+    private final int JPEG_QUALITY = 90;
     private final double redirectDelay = 1.5; // seconds
 
     private String tvUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
@@ -71,11 +92,6 @@ public class MainActivity extends AppCompatActivity {
     private ScanType leftButtonType = ScanType.RADIO;
     private ScanType rightButtonType = ScanType.TV;
 
-    private String scanUuid = "";
-    private String presignedUrl = "";
-    private boolean showingImagePicker = false;
-    private Image inputImage = null;
-
     private ImageView imgLogo;
     private ImageButton btnMain;
     private Button btnLeft;
@@ -85,9 +101,8 @@ public class MainActivity extends AppCompatActivity {
     private APIInterface apiInterface;
 
     private FusedLocationProviderClient fusedLocationClient;
-    private final int locationRequestCode = 1000;
-    private final int cameraRequestCode = 2000;
-    private final int phoneStateRequestCode = 1000;
+    private final int REQUEST_CODE = 1000;
+    private final int REQUEST_CAMERA = 999;
     private Location currentLocation;
 
     @Override
@@ -97,10 +112,16 @@ public class MainActivity extends AppCompatActivity {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA, Manifest.permission.READ_PHONE_STATE},
-                    cameraRequestCode);
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.CAMERA,
+                            Manifest.permission.READ_PHONE_STATE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_CODE);
         } else {
             // already permission granted
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -165,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case locationRequestCode: {
+            case REQUEST_CODE: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -184,6 +205,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CAMERA) {
+            Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            thumbnail.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, bytes);
+            File destination = new File(Environment.getExternalStorageDirectory(),"temp.jpg");
+            FileOutputStream fo;
+            try {
+                fo = new FileOutputStream(destination);
+                fo.write(bytes.toByteArray());
+                fo.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            // Upload to S3
+            uploadToS3(destination.getAbsolutePath());
+        }
+    }
+
     void mainButtonTapped() {
         double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
         double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
@@ -191,8 +235,10 @@ public class MainActivity extends AppCompatActivity {
         switch (mainButtonType) {
             case SCANNER:
                 Log.d(TAG, "Doing image scan!");
+                getPresignedUrl(new PresignedUrl("scan", IMAGE_FILENAME));
                 // Get image from camera
-                //createScan();
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(intent, REQUEST_CAMERA);
                 break;
             case RADIO:
                 Log.d(TAG, "Doing radio scan!");
@@ -307,40 +353,95 @@ public class MainActivity extends AppCompatActivity {
                 Build.BRAND + " " + Build.MODEL);
     }
 
-    void createScan(ScanDetail scanDetail) {
-        /*
-        Call<String> call = apiInterface.createScan(apiKey, contentType, scanDetail);
-        call.enqueue(new Callback<String>() {
+    void getPresignedUrl(PresignedUrl presignedUrl) {
+        Call<PresignedUrlResponse> call = apiInterface.getPresignedUrl(API_KEY, CONTENT_TYPE, presignedUrl);
+        call.enqueue(new Callback<PresignedUrlResponse>() {
             @Override
-            public void onResponse(Call<MultipleResource> call, Response<MultipleResource> response) {
+            public void onResponse(Call<PresignedUrlResponse> call, Response<PresignedUrlResponse> response) {
 
+                Log.d(TAG, response.code() + "");
 
-                Log.d("TAG", response.code() + "");
+                PresignedUrlResponse resource = response.body();
+                if (resource != null) {
+                    String uuid = resource.getUuid();
+                    String presignedUrl = resource.getUploadUrl();
+                    Log.d(TAG, "UUID = " + uuid);
+                    Log.d(TAG, "Presigned URL = " + presignedUrl);
 
-                String displayResponse = "";
-
-                MultipleResource resource = response.body();
-                Integer text = resource.page;
-                Integer total = resource.total;
-                Integer totalPages = resource.totalPages;
-                List<MultipleResource.Datum> datumList = resource.data;
-
-                displayResponse += text + " Page\n" + total + " Total\n" + totalPages + " Total Pages\n";
-
-                for (MultipleResource.Datum datum : datumList) {
-                    displayResponse += datum.id + " " + datum.name + " " + datum.pantoneValue + " " + datum.year + "\n";
+                    // Save to user defaults first
+                    SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = sharedPref.edit();
+                    editor.putString(KEY_SCAN_UUID, uuid);
+                    editor.putString(KEY_PRESIGNED_URL, presignedUrl);
+                    editor.apply();
                 }
-
-                responseText.setText(displayResponse);
-
             }
 
             @Override
-            public void onFailure(Call<MultipleResource> call, Throwable t) {
+            public void onFailure(Call<PresignedUrlResponse> call, Throwable t) {
                 call.cancel();
             }
         });
+    }
+
+    void uploadToS3(String imageFilePath) {
+        Log.d(TAG, "Uploading image at " + imageFilePath);
+
+        String CONTENT_IMAGE = "image/jpeg";
+
+        File file = new File(imageFilePath);    // create new file on device
+        RequestBody requestFile = RequestBody.create(MediaType.parse(CONTENT_IMAGE), file);
+
+        /* since the pre-signed URL from S3 contains a host, this dummy URL will
+         * be replaced completely by the pre-signed URL.  (I'm using baseURl(String) here
+         * but see baseUrl(okhttp3.HttpUrl) in Javadoc for how base URLs are handled
          */
+        SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+        String presignedUrl = sharedPref.getString(KEY_PRESIGNED_URL, "");
+        String scanUuid = sharedPref.getString(KEY_SCAN_UUID, "");
+        double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
+        double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://www.amazon.com/")
+                .build();
+
+        UpdateImageInterface imageInterface = retrofit.create(UpdateImageInterface.class);
+        // imageUrl is the String as received from AWS S3
+        Call<Void> call = imageInterface.updateImage(presignedUrl, requestFile);
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                Log.d(TAG, response.code() + "");
+
+                createScan(new Scan(IMAGE_FILENAME, scanUuid, latitude, longitude, getMetaData().toString()));
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                call.cancel();
+            }
+        });
+
+    }
+
+    void createScan(Scan scan) {
+        Log.d(TAG, "Create scan: " + scan.getScan().toString());
+        Call<String> call = apiInterface.createScan(API_KEY, CONTENT_TYPE, scan);
+        call.enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                Log.d(TAG, response.code() + "");
+
+                String uuid = response.body();
+                Log.d(TAG, "UUID = " + uuid);
+            }
+
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+                call.cancel();
+            }
+        });
     }
 
     void createRadioScan(RadioScan radioScan) {
