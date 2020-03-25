@@ -41,7 +41,7 @@ public class ScanResponse {
         this.status = status;
     }
 
-    String getRedirectUrl() {
+    public String getRedirectUrl() {
         return redirectUrl;
     }
 
@@ -63,6 +63,16 @@ public class ScanResponse {
 
     public void setDetails(Map<String, String> details) {
         this.details = details;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder()
+                .append("uuid = ").append(uuid)
+                .append("\nstatus = ").append(status)
+                .append("\nredirectUrl = ").append(redirectUrl)
+                .append("\nfallbackUrl = ").append(fallbackUrl)
+                .append("\ndetails = ").append(details).toString();
     }
 
 }

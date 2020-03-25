@@ -73,4 +73,5 @@ public class MetaData {
     public void setModel(String model) {
         this.model = model;
     }
+
 }

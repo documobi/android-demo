@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
@@ -23,13 +24,16 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 
+import com.brandactif.brandactif.model.CreateScanResponse;
 import com.brandactif.brandactif.model.MediaScanResponse;
 import com.brandactif.brandactif.model.MetaData;
 import com.brandactif.brandactif.model.PresignedUrl;
 import com.brandactif.brandactif.model.PresignedUrlResponse;
 import com.brandactif.brandactif.model.RadioScan;
 import com.brandactif.brandactif.model.Scan;
+import com.brandactif.brandactif.model.ScanResponse;
 import com.brandactif.brandactif.model.TvScan;
 import com.brandactif.brandactif.model.VideoScan;
 import com.brandactif.brandactif.network.APIClient;
@@ -37,14 +41,17 @@ import com.brandactif.brandactif.network.APIInterface;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.gson.Gson;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 
@@ -77,16 +84,17 @@ public class MainActivity extends AppCompatActivity {
 
     private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private final String CONTENT_TYPE = "application/json";
-    private final double IMAGE_WIDTH = 400.0;
+    private final int MAX_IMAGE_WIDTH = 600;
+    private final int MAX_IMAGE_HEIGHT = 600;
     private final int JPEG_QUALITY = 90;
-    private final double redirectDelay = 1.5; // seconds
+    private final long GET_SCAN_DELAY = 1500; // msec
 
     private String tvUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private String radioUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private String videoUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private Color backgroundColor;
     private String logo = "";
-    private boolean settingsEnabled = false;
+    private String currentPhotoPath = "";
 
     private ScanType mainButtonType = ScanType.SCANNER;
     private ScanType leftButtonType = ScanType.RADIO;
@@ -210,9 +218,22 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == REQUEST_CAMERA) {
-            Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
+            Log.d(TAG, "Current photo path = " + this.currentPhotoPath);
+            File file = new File(currentPhotoPath);
+            Bitmap originalImage = null;
+            Bitmap resizedImage = null;
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            thumbnail.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, bytes);
+            try {
+                originalImage = MediaStore.Images.Media
+                        .getBitmap(getContentResolver(), Uri.fromFile(file));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (originalImage != null) {
+                resizedImage = resizeImage(originalImage, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT);
+                resizedImage.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, bytes);
+            }
+
             File destination = new File(Environment.getExternalStorageDirectory(),"temp.jpg");
             FileOutputStream fo;
             try {
@@ -228,6 +249,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private Bitmap resizeImage(Bitmap image, int maxWidth, int maxHeight) {
+        if (maxHeight > 0 && maxWidth > 0) {
+            int width = image.getWidth();
+            int height = image.getHeight();
+            float ratioBitmap = (float) width / (float) height;
+            float ratioMax = (float) maxWidth / (float) maxHeight;
+
+            int finalWidth = maxWidth;
+            int finalHeight = maxHeight;
+            if (ratioMax > ratioBitmap) {
+                finalWidth = (int) ((float)maxHeight * ratioBitmap);
+            } else {
+                finalHeight = (int) ((float)maxWidth / ratioBitmap);
+            }
+            image = Bitmap.createScaledBitmap(image, finalWidth, finalHeight, true);
+            return image;
+        } else {
+            return image;
+        }
+    }
+
     void mainButtonTapped() {
         double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
         double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
@@ -238,7 +280,25 @@ public class MainActivity extends AppCompatActivity {
                 getPresignedUrl(new PresignedUrl("scan", IMAGE_FILENAME));
                 // Get image from camera
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(intent, REQUEST_CAMERA);
+                // Ensure that there's a camera activity to handle the intent
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    // Create the File where the photo should go
+                    File photoFile = null;
+                    try {
+                        photoFile = createImageFile();
+                    } catch (IOException ex) {
+                        // Error occurred while creating the File
+                    }
+
+                    // Continue only if the File was successfully created
+                    if (photoFile != null) {
+                        Uri photoURI = FileProvider.getUriForFile(this,
+                                getApplicationContext().getPackageName() + ".provider",
+                                photoFile);
+                        intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                        startActivityForResult(intent, REQUEST_CAMERA);
+                    }
+                }
                 break;
             case RADIO:
                 Log.d(TAG, "Doing radio scan!");
@@ -338,6 +398,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        currentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+
     String getIso8601Date() {
         String iso8601Date = ZonedDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         Log.d(TAG, "Current time = " + iso8601Date);
@@ -414,7 +490,8 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call<Void> call, Response<Void> response) {
                 Log.d(TAG, response.code() + "");
 
-                createScan(new Scan(IMAGE_FILENAME, scanUuid, latitude, longitude, getMetaData().toString()));
+                String metaDataJson = new Gson().toJson(getMetaData());
+                createScan(new Scan(IMAGE_FILENAME, scanUuid, latitude, longitude, metaDataJson));
             }
 
             @Override
@@ -426,22 +503,64 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void createScan(Scan scan) {
-        Log.d(TAG, "Create scan: " + scan.getScan().toString());
-        Call<String> call = apiInterface.createScan(API_KEY, CONTENT_TYPE, scan);
-        call.enqueue(new Callback<String>() {
+        Log.d(TAG, "Create scan: " + scan.toString());
+        Call<CreateScanResponse> call = apiInterface.createScan(API_KEY, CONTENT_TYPE, scan);
+        call.enqueue(new Callback<CreateScanResponse>() {
             @Override
-            public void onResponse(Call<String> call, Response<String> response) {
-                Log.d(TAG, response.code() + "");
+            public void onResponse(Call<CreateScanResponse> call, Response<CreateScanResponse> response) {
+                Log.d(TAG, "createScan returned response " + response.code());
 
-                String uuid = response.body();
-                Log.d(TAG, "UUID = " + uuid);
+                CreateScanResponse resource = response.body();
+                Log.d(TAG, "createScan body = " + resource.toString());
+                final String uuid = resource.getUuid();
+
+                // Get scan after min 1 second delay
+                final Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        getScan(uuid);
+                    }
+                }, GET_SCAN_DELAY);
             }
 
             @Override
-            public void onFailure(Call<String> call, Throwable t) {
+            public void onFailure(Call<CreateScanResponse> call, Throwable t) {
+                Log.e(TAG, "createScan failed");
                 call.cancel();
             }
         });
+    }
+
+    void getScan(String uuid) {
+        Log.d(TAG, "Get scan: " + uuid);
+        Call<ScanResponse> call = apiInterface.getScan(API_KEY, CONTENT_TYPE, uuid);
+        call.enqueue(new Callback<ScanResponse>() {
+            @Override
+            public void onResponse(Call<ScanResponse> call, Response<ScanResponse> response) {
+                Log.d(TAG, "getScan returned response " + response.code());
+
+                ScanResponse resource = response.body();
+                Log.d(TAG, "getScan body = " + resource.toString());
+
+                String redirectUrl = resource.getRedirectUrl();
+                String fallbackUrl = resource.getFallbackUrl();
+                if (redirectUrl != null && !redirectUrl.isEmpty()) {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                    startActivity(browserIntent);
+                } else if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
+                    startActivity(browserIntent);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ScanResponse> call, Throwable t) {
+                Log.e(TAG, "getScan failed");
+                call.cancel();
+            }
+        });
+
     }
 
     void createRadioScan(RadioScan radioScan) {

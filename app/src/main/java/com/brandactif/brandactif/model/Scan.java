@@ -19,4 +19,13 @@ public class Scan {
         this.scan = scan;
     }
 
+    @Override
+    public String toString() {
+        return new StringBuilder()
+                .append("fileName = ").append(scan.getImageFilename())
+                .append("\nuuid = ").append(scan.getImageUuid())
+                .append("\nlatitude = ").append(scan.getLatitude())
+                .append("\nlongitude = ").append(scan.getLongitude())
+                .append("\nmetaData = ").append(scan.getMetaData()).toString();
+    }
 }
