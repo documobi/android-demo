@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SingTel</string>
+    <string name="tv_uuid">2cb6d8d8-287a-4f23-aaa4-d63e30f11853</string>
+    <string name="radio_uuid">2cb6d8d8-287a-4f23-aaa4-d63e30f11853</string>
+    <string name="video_uuid">2cb6d8d8-287a-4f23-aaa4-d63e30f11853</string>
+    <string name="default_scan_type">scanner</string>
+    <string name="settings_enabled">false</string>
+</resources>

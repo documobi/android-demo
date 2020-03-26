@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">BrandActif</string>
+    <string name="tv_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
+    <string name="radio_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
+    <string name="video_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
     <string name="switch_to_tv">Switch to\nTV</string>
     <string name="switch_to_radio">Switch to\nRADIO</string>
     <string name="switch_to_scanner">Switch to\nSCANNER</string>

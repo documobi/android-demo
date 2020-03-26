@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">MediaCorp</string>
+    <string name="tv_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
+    <string name="radio_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
+    <string name="video_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
+    <string name="default_scan_type">tv</string>
+    <string name="settings_enabled">false</string>
+</resources>

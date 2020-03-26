@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Changi</string>
+    <string name="tv_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>
+    <string name="radio_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>
+    <string name="video_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>
+    <string name="default_scan_type">scanner</string>
+    <string name="settings_enabled">false</string>
+</resources>

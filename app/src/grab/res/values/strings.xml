@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Grab</string>
+    <string name="tv_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
+    <string name="radio_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
+    <string name="video_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
+    <string name="default_scan_type">scanner</string>
+    <string name="settings_enabled">false</string>
+</resources>

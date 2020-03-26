@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">RaydioActif</string>
+    <string name="tv_uuid">523ba1bc-b0fc-48f2-862a-52925dc894b5</string>
+    <string name="radio_uuid">523ba1bc-b0fc-48f2-862a-52925dc894b5</string>
+    <string name="video_uuid">523ba1bc-b0fc-48f2-862a-52925dc894b5</string>
+    <string name="default_scan_type">radio</string>
+    <string name="settings_enabled">true</string>
+</resources>
