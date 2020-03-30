@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -470,12 +471,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
     MetaData getMetaData() {
+        TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+        String carrierName = telephonyManager.getNetworkOperatorName();
+        String carrierCountry = telephonyManager.getNetworkCountryIso();
+        int dataNetworkType = telephonyManager.getDataNetworkType();
+        String networkType = "";
+
+        switch (dataNetworkType) {
+            case TelephonyManager.NETWORK_TYPE_GPRS:
+            case TelephonyManager.NETWORK_TYPE_EDGE:
+            case TelephonyManager.NETWORK_TYPE_CDMA:
+            case TelephonyManager.NETWORK_TYPE_1xRTT:
+            case TelephonyManager.NETWORK_TYPE_IDEN:
+                networkType = "2G";
+            case TelephonyManager.NETWORK_TYPE_UMTS:
+            case TelephonyManager.NETWORK_TYPE_EVDO_0:
+            case TelephonyManager.NETWORK_TYPE_EVDO_A:
+            case TelephonyManager.NETWORK_TYPE_HSDPA:
+            case TelephonyManager.NETWORK_TYPE_HSUPA:
+            case TelephonyManager.NETWORK_TYPE_HSPA:
+            case TelephonyManager.NETWORK_TYPE_EVDO_B:
+            case TelephonyManager.NETWORK_TYPE_EHRPD:
+            case TelephonyManager.NETWORK_TYPE_HSPAP:
+                networkType = "3G";
+            case TelephonyManager.NETWORK_TYPE_LTE:
+                networkType = "4G";
+            case TelephonyManager.NETWORK_TYPE_NR:
+                networkType = "5G";
+            default:
+                networkType = "Unknown";
+        }
+
         return new MetaData(Build.getSerial(),
                 "Android",
                 Build.VERSION.RELEASE,
                 "Chrome",
                 Locale.getDefault().getLanguage(),
-                Build.BRAND + " " + Build.MODEL);
+                Build.BRAND + " " + Build.MODEL,
+                carrierName,
+                carrierCountry,
+                networkType);
     }
 
     void getPresignedUrl(PresignedUrl presignedUrl) {
