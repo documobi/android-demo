@@ -1,7 +1,10 @@
 package com.brandactif.scandemo;
 
 import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -113,8 +116,9 @@ public class MainActivity extends AppCompatActivity {
     private APIInterface apiInterface;
 
     private FusedLocationProviderClient fusedLocationClient;
-    private final int REQUEST_CODE = 1000;
-    private final int REQUEST_CAMERA = 999;
+    private final int REQUEST_PERMISSIONS_CODE = 1000;
+    private final int REQUEST_FROM_CAMERA = 1001;
+    private final int REQUEST_FROM_GALLERY = 1002;
     private Location currentLocation;
 
     @Override
@@ -171,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
                             Manifest.permission.CAMERA,
                             Manifest.permission.READ_PHONE_STATE,
                             Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST_CODE);
+                            REQUEST_PERMISSIONS_CODE);
         } else {
             // already permission granted
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -188,7 +192,6 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
         }
-
 
         imgLogo = findViewById(R.id.imgLogo);
         btnMain = findViewById(R.id.btnMain);
@@ -244,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case REQUEST_CODE: {
+            case REQUEST_PERMISSIONS_CODE: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -265,38 +268,59 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Bitmap originalImage = null;
+        Bitmap resizedImage = null;
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQUEST_CAMERA) {
+        if (resultCode != Activity.RESULT_OK) {
+            Log.e(TAG, "onActivityResult returned " + resultCode);
+            return;
+        }
+
+        if (requestCode == REQUEST_FROM_CAMERA) {
             Log.d(TAG, "Current photo path = " + this.currentPhotoPath);
             File file = new File(currentPhotoPath);
-            Bitmap originalImage = null;
-            Bitmap resizedImage = null;
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             try {
                 originalImage = MediaStore.Images.Media
                         .getBitmap(getContentResolver(), Uri.fromFile(file));
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            if (originalImage != null) {
-                resizedImage = resizeImage(originalImage, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT);
-                resizedImage.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, bytes);
-            }
-
-            File destination = new File(Environment.getExternalStorageDirectory(),"temp.jpg");
-            FileOutputStream fo;
+        } else if (requestCode == REQUEST_FROM_GALLERY) {
+            Uri selectedImageUri = data.getData();
             try {
-                fo = new FileOutputStream(destination);
-                fo.write(bytes.toByteArray());
-                fo.close();
+                originalImage = MediaStore.Images.Media
+                        .getBitmap(getContentResolver(), selectedImageUri);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            // Upload to S3
-            uploadToS3(destination.getAbsolutePath());
+        } else {
+            Log.d(TAG, "Invalid request code " + requestCode);
+            return;
         }
+
+        if (originalImage != null) {
+            resizedImage = resizeImage(originalImage, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT);
+            resizedImage.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, bytes);
+        } else {
+            Log.d(TAG, "Cannot get original image!");
+            return;
+        }
+
+        File destination = new File(Environment.getExternalStorageDirectory(), "temp.jpg");
+        FileOutputStream fo;
+        try {
+            fo = new FileOutputStream(destination);
+            fo.write(bytes.toByteArray());
+            fo.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Upload to S3
+        uploadToS3(destination.getAbsolutePath());
     }
 
     private Bitmap resizeImage(Bitmap image, int maxWidth, int maxHeight) {
@@ -309,9 +333,9 @@ public class MainActivity extends AppCompatActivity {
             int finalWidth = maxWidth;
             int finalHeight = maxHeight;
             if (ratioMax > ratioBitmap) {
-                finalWidth = (int) ((float)maxHeight * ratioBitmap);
+                finalWidth = (int) ((float) maxHeight * ratioBitmap);
             } else {
-                finalHeight = (int) ((float)maxWidth / ratioBitmap);
+                finalHeight = (int) ((float) maxWidth / ratioBitmap);
             }
             image = Bitmap.createScaledBitmap(image, finalWidth, finalHeight, true);
             return image;
@@ -320,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void mainButtonTapped() {
+    private void mainButtonTapped() {
         double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
         double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
 
@@ -328,27 +352,7 @@ public class MainActivity extends AppCompatActivity {
             case SCANNER:
                 Log.d(TAG, "Doing image scan!");
                 getPresignedUrl(new PresignedUrl("scan", IMAGE_FILENAME));
-                // Get image from camera
-                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                // Ensure that there's a camera activity to handle the intent
-                if (intent.resolveActivity(getPackageManager()) != null) {
-                    // Create the File where the photo should go
-                    File photoFile = null;
-                    try {
-                        photoFile = createImageFile();
-                    } catch (IOException ex) {
-                        // Error occurred while creating the File
-                    }
-
-                    // Continue only if the File was successfully created
-                    if (photoFile != null) {
-                        Uri photoURI = FileProvider.getUriForFile(this,
-                                getApplicationContext().getPackageName() + ".provider",
-                                photoFile);
-                        intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                        startActivityForResult(intent, REQUEST_CAMERA);
-                    }
-                }
+                selectImageInput();
                 break;
             case RADIO:
                 Log.d(TAG, "Doing radio scan!");
@@ -382,25 +386,25 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    void leftButtonTapped() {
+    private void leftButtonTapped() {
         ScanType prevType = mainButtonType;
         mainButtonType = leftButtonType;
         leftButtonType = prevType;
         updateButtons();
     }
 
-    void rightButtonTapped() {
+    private void rightButtonTapped() {
         ScanType prevType = mainButtonType;
         mainButtonType = rightButtonType;
         rightButtonType = prevType;
         updateButtons();
     }
 
-    void settingsButtonTapped() {
+    private void settingsButtonTapped() {
 
     }
 
-    void updateButtons() {
+    private void updateButtons() {
         switch (mainButtonType) {
             case SCANNER:
                 btnMain.setImageResource(R.mipmap.button);
@@ -448,6 +452,59 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void selectImageInput() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        // String array for alert dialog multi choice items
+        String[] items = new String[] {"Camera", "Gallery"};
+
+        builder.setTitle("Select image source");
+        builder.setSingleChoiceItems(items, -1, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                int selectedPosition = ((AlertDialog)dialog).getListView().getCheckedItemPosition();
+                if (selectedPosition == 0) {
+                    pickFromCamera();
+                } else {
+                    pickFromGallery();
+                }
+            }
+        }).show();
+    }
+
+    private void pickFromCamera() {
+        // Get image from camera
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+            }
+
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        getApplicationContext().getPackageName() + ".provider",
+                        photoFile);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(intent, REQUEST_FROM_CAMERA);
+            }
+        }
+    }
+
+    private void pickFromGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("image/*");
+        String[] mimeTypes = {"image/jpeg"};
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+        startActivityForResult(intent, REQUEST_FROM_GALLERY);
+    }
+
     private File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -471,7 +528,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     MetaData getMetaData() {
-        TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         String carrierName = telephonyManager.getNetworkOperatorName();
         String carrierCountry = telephonyManager.getNetworkCountryIso();
         int dataNetworkType = telephonyManager.getDataNetworkType();
@@ -500,6 +557,12 @@ public class MainActivity extends AppCompatActivity {
                 networkType = "5G";
             default:
                 networkType = "Unknown";
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.READ_PHONE_STATE},
+                    REQUEST_PERMISSIONS_CODE);
         }
 
         return new MetaData(Build.getSerial(),
