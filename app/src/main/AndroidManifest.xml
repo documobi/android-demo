@@ -21,15 +21,19 @@
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
         <activity
-            android:name=".VideoActivity"
+            android:name=".VideoListActivity"
             android:label="@string/videos"
-            android:theme="@style/Theme.AppCompat.Light">
-        </activity>
+            android:theme="@style/Theme.AppCompat.Light"></activity>
+
+        <activity
+            android:name=".VideoActivity"
+            android:theme="@style/Theme.AppCompat.Light"></activity>
 
         <provider
             android:name=".utils.GenericFileProvider"
@@ -40,7 +44,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
     </application>
 
 </manifest>

@@ -9,6 +9,7 @@ import com.brandactif.scandemo.model.Scan;
 import com.brandactif.scandemo.model.ScanResponse;
 import com.brandactif.scandemo.model.TvScan;
 import com.brandactif.scandemo.model.VideoScan;
+import com.brandactif.scandemo.model.VideoTimeRange;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -50,10 +51,10 @@ public interface APIInterface {
                                             @Header("content-type") String contentType,
                                             @Body VideoScan videoScan);
 
-    @GET("api/v2/video_time_ranges?")
-    Call<ScanResponse> getVideoTimeRanges(@Header("api-key") String apiKey,
-                                          @Header("content-type") String contentType,
-                                          @Query("video_uuid") String videoUuid);
+    @GET("api/v2/video_time_ranges")
+    Call<VideoTimeRange[]> getVideoTimeRanges(@Header("api-key") String apiKey,
+                                              @Header("content-type") String contentType,
+                                              @Query("video_name") String videoName);
 
 }
 

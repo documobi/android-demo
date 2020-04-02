@@ -372,15 +372,6 @@ public class MainActivity extends AppCompatActivity {
                         Utils.getMetaData(MainActivity.this));
                 createTvScan(tvScan);
                 break;
-            case VIDEO:
-                Log.d(TAG, "Doing video scan!");
-//                VideoScan videoScan = new VideoScan(videoUuid,
-//                        getVideoTime(),
-//                        latitude,
-//                        longitude,
-//                        getMetaData());
-//                createVideoScan(videoScan);
-                break;
         }
     }
 
@@ -399,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void videoButtonTapped() {
-        Intent videoActivity = new Intent(getApplicationContext(), VideoActivity.class);
+        Intent videoActivity = new Intent(getApplicationContext(), VideoListActivity.class);
         startActivity(videoActivity);
     }
 
@@ -578,7 +569,10 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
-                Log.d(TAG, response.code() + "");
+                if (response.code() != 201) {
+                    Log.d(TAG, "uploadToS3 returned response " + response.code());
+                    return;
+                }
 
                 String metaDataJson = new Gson().toJson(Utils.getMetaData(MainActivity.this));
                 createScan(new Scan(IMAGE_FILENAME, scanUuid, latitude, longitude, metaDataJson));
@@ -599,7 +593,10 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<CreateScanResponse>() {
             @Override
             public void onResponse(Call<CreateScanResponse> call, Response<CreateScanResponse> response) {
-                Log.d(TAG, "createScan returned response " + response.code());
+                if (response.code() != 201) {
+                    Log.d(TAG, "createScan returned response " + response.code());
+                    return;
+                }
 
                 CreateScanResponse resource = response.body();
                 Log.d(TAG, "createScan body = " + resource.toString());
@@ -629,7 +626,10 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<ScanResponse>() {
             @Override
             public void onResponse(Call<ScanResponse> call, Response<ScanResponse> response) {
-                Log.d(TAG, "getScan returned response " + response.code());
+                if (response.code() != 200) {
+                    Log.d(TAG, "getScan returned response " + response.code());
+                    return;
+                }
 
                 ScanResponse resource = response.body();
                 Log.d(TAG, "getScan body = " + resource.toString());
@@ -661,9 +661,10 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d(TAG, response.code() + "");
-
-                String displayResponse = "";
+                if (response.code() != 201) {
+                    Log.d(TAG, "createRadioScan returned response " + response.code());
+                    return;
+                }
 
                 MediaScanResponse resource = response.body();
                 if (resource != null) {
@@ -693,9 +694,10 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d(TAG, response.code() + "");
-
-                String displayResponse = "";
+                if (response.code() != 201) {
+                    Log.d(TAG, "createTvScan returned response " + response.code());
+                    return;
+                }
 
                 MediaScanResponse resource = response.body();
                 if (resource != null) {

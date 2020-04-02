@@ -1,14 +1,11 @@
 package com.brandactif.scandemo;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -23,16 +20,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.brandactif.scandemo.model.MediaScanResponse;
-import com.brandactif.scandemo.model.MetaData;
+import com.brandactif.scandemo.model.ScanResponse;
 import com.brandactif.scandemo.model.VideoScan;
+import com.brandactif.scandemo.model.VideoTimeRange;
 import com.brandactif.scandemo.network.APIClient;
 import com.brandactif.scandemo.network.APIInterface;
+import com.brandactif.scandemo.utils.Utils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -43,13 +41,18 @@ public class VideoActivity extends AppCompatActivity {
 
     private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private final String CONTENT_TYPE = "application/json";
+
     private String videoName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
+    private int videoId;
+    private boolean isTimestamped = false;
+
+    private APIInterface apiInterface;
 
     private final int REQUEST_PERMISSIONS_CODE = 1000;
     private FusedLocationProviderClient fusedLocationClient;
     private Location currentLocation;
 
-    private final String TAG = "VideoPlayer";
+    private final String TAG = "VideoActivity";
     private VideoView mVideoView;
     private Button mBtnTapToBuy;
     private ListView mListView;
@@ -61,12 +64,25 @@ public class VideoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
 
-        videoName = getString(R.string.video_uuid);
+        apiInterface = APIClient.getClient().create(APIInterface.class);
+
+        Intent intent = getIntent();
+        videoName = intent.getStringExtra("videoName");
+        videoId = intent.getIntExtra("videoId", R.raw.the_wolf_of_wall_street);
+        isTimestamped = intent.getBooleanExtra("isTimestamped", false);
+        String videoTitle = intent.getStringExtra("videoTitle");
+
+        setTitle(videoTitle);
 
         mVideoView = findViewById(R.id.videoView);
         mBtnTapToBuy = findViewById(R.id.btnTapToBuy);
         mListView = findViewById(R.id.listView);
         mTimestamps = new ArrayList<>();
+
+        if (isTimestamped) {
+            getVideoTimeRanges(videoName);
+            mListView.setVisibility(View.GONE);
+        }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -103,7 +119,7 @@ public class VideoActivity extends AppCompatActivity {
                         Float.parseFloat(selectedTimestamp),
                         currentLocation.getLatitude(),
                         currentLocation.getLongitude(),
-                        getMetaData());
+                        Utils.getMetaData(VideoActivity.this));
                 createVideoScan(videoScan);
             }
         });
@@ -149,7 +165,7 @@ public class VideoActivity extends AppCompatActivity {
         MediaController mediaController = new MediaController(this);
         mVideoView.setMediaController(mediaController);
 
-        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.the_wolf_of_wall_street);
+        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + videoId);
         mVideoView.setVideoURI(videoUri);
         mVideoView.start();
     }
@@ -158,60 +174,44 @@ public class VideoActivity extends AppCompatActivity {
         mVideoView.stopPlayback();
     }
 
-    // TODO: Move method to common static Utils class
-    MetaData getMetaData() {
-        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        String carrierName = telephonyManager.getNetworkOperatorName();
-        String carrierCountry = telephonyManager.getNetworkCountryIso();
+    private void getVideoTimeRanges(String uuid) {
+        Log.d(TAG, "Get timestamps: " + uuid);
+        Call<VideoTimeRange[]> call = apiInterface.getVideoTimeRanges(API_KEY, CONTENT_TYPE, uuid);
+        call.enqueue(new Callback<VideoTimeRange[]>() {
+            @Override
+            public void onResponse(Call<VideoTimeRange[]> call, Response<VideoTimeRange[]> response) {
+                if (response.code() != 200) {
+                    Log.d(TAG, "getVideoTimeRanges returned response " + response.code());
+                    return;
+                }
 
-        int dataNetworkType = telephonyManager.getDataNetworkType();
-        String networkType = "";
+                VideoTimeRange resource[] = response.body();
+                Log.d(TAG, "getVideoTimeRanges body = " + resource.toString());
 
-        switch (dataNetworkType) {
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-            case TelephonyManager.NETWORK_TYPE_CDMA:
-            case TelephonyManager.NETWORK_TYPE_1xRTT:
-            case TelephonyManager.NETWORK_TYPE_IDEN:
-                networkType = "2G";
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-            case TelephonyManager.NETWORK_TYPE_EVDO_0:
-            case TelephonyManager.NETWORK_TYPE_EVDO_A:
-            case TelephonyManager.NETWORK_TYPE_HSDPA:
-            case TelephonyManager.NETWORK_TYPE_HSUPA:
-            case TelephonyManager.NETWORK_TYPE_HSPA:
-            case TelephonyManager.NETWORK_TYPE_EVDO_B:
-            case TelephonyManager.NETWORK_TYPE_EHRPD:
-            case TelephonyManager.NETWORK_TYPE_HSPAP:
-                networkType = "3G";
-            case TelephonyManager.NETWORK_TYPE_LTE:
-                networkType = "4G";
-            case TelephonyManager.NETWORK_TYPE_NR:
-                networkType = "5G";
-            default:
-                networkType = "Unknown";
-        }
+                for (int i=0; i<resource.length; i++) {
+                    VideoTimeRange tr = resource[i];
+                    Log.d(TAG, "startAt=" + tr.getStartAt() + ", endAt=" + tr.getEndAt());
+                }
+            }
 
-        return new MetaData(Build.getSerial(),
-                "Android",
-                Build.VERSION.RELEASE,
-                "Chrome",
-                Locale.getDefault().getLanguage(),
-                Build.BRAND + " " + Build.MODEL,
-                carrierName,
-                carrierCountry,
-                networkType);
+            @Override
+            public void onFailure(Call<VideoTimeRange[]> call, Throwable t) {
+                Toast.makeText(VideoActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
+                call.cancel();
+            }
+        });
+
     }
 
     private void createVideoScan(VideoScan videoScan) {
-        APIInterface apiInterface = APIClient.getClient().create(APIInterface.class);
         Call<MediaScanResponse> call = apiInterface.createVideoScan(API_KEY, CONTENT_TYPE, videoScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d(TAG, response.code() + "");
-
-                String displayResponse = "";
+                if (response.code() != 201) {
+                    Log.d(TAG, "createVideoScan returned response " + response.code());
+                    return;
+                }
 
                 MediaScanResponse resource = response.body();
                 Log.d(TAG, "createVideoScan body = " + resource.toString());
