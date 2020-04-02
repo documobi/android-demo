@@ -4,8 +4,8 @@ import com.google.gson.annotations.SerializedName;
 
 public class TvScanDetail {
 
-    @SerializedName("tv_uuid")
-    private String tvUuid;
+    @SerializedName("tv_name")
+    private String tvName;
     @SerializedName("time")
     private String time;
     @SerializedName("latitude")
@@ -15,20 +15,20 @@ public class TvScanDetail {
     @SerializedName("metadata")
     private MetaData metaData;
 
-    public TvScanDetail(String tvUuid, String time, double latitude, double longitude, MetaData metaData) {
-        this.tvUuid = tvUuid;
+    public TvScanDetail(String tvName, String time, double latitude, double longitude, MetaData metaData) {
+        this.tvName = tvName;
         this.time = time;
         this.latitude = latitude;
         this.longitude = longitude;
         this.metaData = metaData;
     }
 
-    public String getTvUuid() {
-        return tvUuid;
+    public String getTvName() {
+        return tvName;
     }
 
-    public void setTvUuid(String radioUuid) {
-        this.tvUuid = tvUuid;
+    public void setTvName(String radioUuid) {
+        this.tvName = tvName;
     }
 
     public String getTime() {

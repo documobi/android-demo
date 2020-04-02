@@ -12,12 +12,10 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -32,16 +30,15 @@ import androidx.core.content.FileProvider;
 
 import com.brandactif.scandemo.model.CreateScanResponse;
 import com.brandactif.scandemo.model.MediaScanResponse;
-import com.brandactif.scandemo.model.MetaData;
 import com.brandactif.scandemo.model.PresignedUrl;
 import com.brandactif.scandemo.model.PresignedUrlResponse;
 import com.brandactif.scandemo.model.RadioScan;
 import com.brandactif.scandemo.model.Scan;
 import com.brandactif.scandemo.model.ScanResponse;
 import com.brandactif.scandemo.model.TvScan;
-import com.brandactif.scandemo.model.VideoScan;
 import com.brandactif.scandemo.network.APIClient;
 import com.brandactif.scandemo.network.APIInterface;
+import com.brandactif.scandemo.utils.Utils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -52,11 +49,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.Locale;
 import java.util.Map;
 
 import okhttp3.MediaType;
@@ -87,9 +80,8 @@ public class MainActivity extends AppCompatActivity {
     private final String KEY_PRESIGNED_URL = "presigned_url";
 
     private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
-    private String tvUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
-    private String radioUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
-    private String videoUuid = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
+    private String tvName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
+    private String radioName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private boolean isSettingsEnabled = false;
     private ScanType defaultScanType = ScanType.SCANNER;
 
@@ -111,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnMain;
     private Button btnLeft;
     private Button btnRight;
+    private Button btnVideo;
     private ImageButton btnSettings;
 
     private APIInterface apiInterface;
@@ -126,9 +119,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvUuid = getString(R.string.tv_uuid);
-        radioUuid = getString(R.string.radio_uuid);
-        videoUuid = getString(R.string.video_uuid);
+        tvName = getString(R.string.tv_uuid);
+        radioName = getString(R.string.radio_uuid);
 
         switch (getString(R.string.default_scan_type)) {
             case "tv":
@@ -175,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                             Manifest.permission.CAMERA,
                             Manifest.permission.READ_PHONE_STATE,
                             Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            REQUEST_PERMISSIONS_CODE);
+                    REQUEST_PERMISSIONS_CODE);
         } else {
             // already permission granted
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -197,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
         btnMain = findViewById(R.id.btnMain);
         btnLeft = findViewById(R.id.btnLeft);
         btnRight = findViewById(R.id.btnRight);
+        btnVideo = findViewById(R.id.btnVideo);
         btnSettings = findViewById(R.id.btnSettings);
 
         btnMain.setImageResource(R.mipmap.button);
@@ -231,6 +224,13 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 rightButtonTapped();
+            }
+        });
+
+        btnVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                videoButtonTapped();
             }
         });
 
@@ -356,32 +356,30 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case RADIO:
                 Log.d(TAG, "Doing radio scan!");
-                RadioScan radioScan = new RadioScan(radioUuid,
-                        getIso8601Date(),
+                RadioScan radioScan = new RadioScan(radioName,
+                        Utils.getIso8601Date(),
                         latitude,
                         longitude,
-                        getMetaData());
+                        Utils.getMetaData(MainActivity.this));
                 createRadioScan(radioScan);
                 break;
             case TV:
                 Log.d(TAG, "Doing TV scan!");
-                TvScan tvScan = new TvScan(tvUuid,
-                        getIso8601Date(),
+                TvScan tvScan = new TvScan(tvName,
+                        Utils.getIso8601Date(),
                         latitude,
                         longitude,
-                        getMetaData());
+                        Utils.getMetaData(MainActivity.this));
                 createTvScan(tvScan);
                 break;
             case VIDEO:
                 Log.d(TAG, "Doing video scan!");
-                /*
-                VideoScan videoScan = new VideoScan(videoUuid,
-                        getIso8601Time(),
-                        latitude,
-                        longitude,
-                        getMetaData());
-                createVideoScan(videoScan);
-                 */
+//                VideoScan videoScan = new VideoScan(videoUuid,
+//                        getVideoTime(),
+//                        latitude,
+//                        longitude,
+//                        getMetaData());
+//                createVideoScan(videoScan);
                 break;
         }
     }
@@ -400,6 +398,11 @@ public class MainActivity extends AppCompatActivity {
         updateButtons();
     }
 
+    private void videoButtonTapped() {
+        Intent videoActivity = new Intent(getApplicationContext(), VideoActivity.class);
+        startActivity(videoActivity);
+    }
+
     private void settingsButtonTapped() {
 
     }
@@ -415,9 +418,6 @@ public class MainActivity extends AppCompatActivity {
             case TV:
                 btnMain.setImageResource(R.mipmap.tv);
                 break;
-            case VIDEO:
-                btnMain.setImageResource(R.mipmap.button);
-                break;
         }
 
         switch (leftButtonType) {
@@ -430,11 +430,7 @@ public class MainActivity extends AppCompatActivity {
             case TV:
                 btnLeft.setText(R.string.switch_to_tv);
                 break;
-            case VIDEO:
-                btnLeft.setText(R.string.switch_to_video);
-                break;
         }
-
 
         switch (rightButtonType) {
             case SCANNER:
@@ -446,9 +442,6 @@ public class MainActivity extends AppCompatActivity {
             case TV:
                 btnRight.setText(R.string.switch_to_tv);
                 break;
-            case VIDEO:
-                btnRight.setText(R.string.switch_to_video);
-                break;
         }
     }
 
@@ -456,14 +449,14 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         // String array for alert dialog multi choice items
-        String[] items = new String[] {"Camera", "Gallery"};
+        String[] items = new String[]{"Camera", "Gallery"};
 
         builder.setTitle("Select image source");
         builder.setSingleChoiceItems(items, -1, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
-                int selectedPosition = ((AlertDialog)dialog).getListView().getCheckedItemPosition();
+                int selectedPosition = ((AlertDialog) dialog).getListView().getCheckedItemPosition();
                 if (selectedPosition == 0) {
                     pickFromCamera();
                 } else {
@@ -521,59 +514,9 @@ public class MainActivity extends AppCompatActivity {
         return image;
     }
 
-    String getIso8601Date() {
-        String iso8601Date = ZonedDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        Log.d(TAG, "Current time = " + iso8601Date);
-        return iso8601Date;
-    }
-
-    MetaData getMetaData() {
-        TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-        String carrierName = telephonyManager.getNetworkOperatorName();
-        String carrierCountry = telephonyManager.getNetworkCountryIso();
-        int dataNetworkType = telephonyManager.getDataNetworkType();
-        String networkType = "";
-
-        switch (dataNetworkType) {
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-            case TelephonyManager.NETWORK_TYPE_CDMA:
-            case TelephonyManager.NETWORK_TYPE_1xRTT:
-            case TelephonyManager.NETWORK_TYPE_IDEN:
-                networkType = "2G";
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-            case TelephonyManager.NETWORK_TYPE_EVDO_0:
-            case TelephonyManager.NETWORK_TYPE_EVDO_A:
-            case TelephonyManager.NETWORK_TYPE_HSDPA:
-            case TelephonyManager.NETWORK_TYPE_HSUPA:
-            case TelephonyManager.NETWORK_TYPE_HSPA:
-            case TelephonyManager.NETWORK_TYPE_EVDO_B:
-            case TelephonyManager.NETWORK_TYPE_EHRPD:
-            case TelephonyManager.NETWORK_TYPE_HSPAP:
-                networkType = "3G";
-            case TelephonyManager.NETWORK_TYPE_LTE:
-                networkType = "4G";
-            case TelephonyManager.NETWORK_TYPE_NR:
-                networkType = "5G";
-            default:
-                networkType = "Unknown";
-        }
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                            Manifest.permission.READ_PHONE_STATE},
-                    REQUEST_PERMISSIONS_CODE);
-        }
-
-        return new MetaData(Build.getSerial(),
-                "Android",
-                Build.VERSION.RELEASE,
-                "Chrome",
-                Locale.getDefault().getLanguage(),
-                Build.BRAND + " " + Build.MODEL,
-                carrierName,
-                carrierCountry,
-                networkType);
+    float getVideoTime() {
+        // Get current video playback time
+        return 0.0f;
     }
 
     void getPresignedUrl(PresignedUrl presignedUrl) {
@@ -637,12 +580,13 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call<Void> call, Response<Void> response) {
                 Log.d(TAG, response.code() + "");
 
-                String metaDataJson = new Gson().toJson(getMetaData());
+                String metaDataJson = new Gson().toJson(Utils.getMetaData(MainActivity.this));
                 createScan(new Scan(IMAGE_FILENAME, scanUuid, latitude, longitude, metaDataJson));
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
                 call.cancel();
             }
         });
@@ -673,7 +617,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<CreateScanResponse> call, Throwable t) {
-                Log.e(TAG, "createScan failed");
+                Toast.makeText(MainActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
                 call.cancel();
             }
         });
@@ -698,12 +642,14 @@ public class MainActivity extends AppCompatActivity {
                 } else if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
                     Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(fallbackUrl));
                     startActivity(browserIntent);
+                } else {
+                    Toast.makeText(MainActivity.this, "Image scan status " + resource.getStatus(), Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ScanResponse> call, Throwable t) {
-                Log.e(TAG, "getScan failed");
+                Toast.makeText(MainActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
                 call.cancel();
             }
         });
@@ -722,16 +668,21 @@ public class MainActivity extends AppCompatActivity {
                 MediaScanResponse resource = response.body();
                 if (resource != null) {
                     String redirectUrl = resource.getRedirectUrl();
-                    Map<String, String> details = resource.getResponseDetails();
+                    if (redirectUrl != null && !redirectUrl.isEmpty()) {
+                        Map<String, String> details = resource.getResponseDetails();
 
-                    Log.d(TAG, "Redirect URL = " + redirectUrl);
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
-                    startActivity(browserIntent);
+                        Log.d(TAG, "Redirect URL = " + redirectUrl);
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                        startActivity(browserIntent);
+                    } else {
+                        Toast.makeText(MainActivity.this, "No redirect URL", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<MediaScanResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
                 call.cancel();
             }
         });
@@ -749,43 +700,21 @@ public class MainActivity extends AppCompatActivity {
                 MediaScanResponse resource = response.body();
                 if (resource != null) {
                     String redirectUrl = resource.getRedirectUrl();
-                    Map<String, String> details = resource.getResponseDetails();
+                    if (redirectUrl != null && !redirectUrl.isEmpty()) {
+                        Map<String, String> details = resource.getResponseDetails();
 
-                    Log.d(TAG, "Redirect URL = " + redirectUrl);
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
-                    startActivity(browserIntent);
+                        Log.d(TAG, "Redirect URL = " + redirectUrl);
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
+                        startActivity(browserIntent);
+                    } else {
+                        Toast.makeText(MainActivity.this, "No redirect URL", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<MediaScanResponse> call, Throwable t) {
-                call.cancel();
-            }
-        });
-    }
-
-    void createVideoScan(VideoScan videoScan) {
-        Call<MediaScanResponse> call = apiInterface.createVideoScan(API_KEY, CONTENT_TYPE, videoScan);
-        call.enqueue(new Callback<MediaScanResponse>() {
-            @Override
-            public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
-                Log.d(TAG, response.code() + "");
-
-                String displayResponse = "";
-
-                MediaScanResponse resource = response.body();
-                if (resource != null) {
-                    String redirectUrl = resource.getRedirectUrl();
-                    Map<String, String> details = resource.getResponseDetails();
-
-                    Log.d(TAG, "Redirect URL = " + redirectUrl);
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl));
-                    startActivity(browserIntent);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<MediaScanResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "API call failed", Toast.LENGTH_SHORT).show();
                 call.cancel();
             }
         });

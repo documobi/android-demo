@@ -6,6 +6,17 @@
     <string name="switch_to_tv">Switch to\nTV</string>
     <string name="switch_to_radio">Switch to\nRADIO</string>
     <string name="switch_to_scanner">Switch to\nSCANNER</string>
-    <string name="switch_to_video">Switch to\nVIDEO</string>
+    <string name="videos">Videos</string>
     <string name="tap_to_scan">TAP TO SCAN</string>
+    <string name="tap_to_buy">TAP TO BUY</string>
+    <string name="title_activity_video">VideoActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="todo">TODO</string>
 </resources>

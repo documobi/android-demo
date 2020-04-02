@@ -4,8 +4,8 @@ import com.google.gson.annotations.SerializedName;
 
 public class VideoScanDetail {
 
-    @SerializedName("video_uuid")
-    private String videoUuid;
+    @SerializedName("video_name")
+    private String videoName;
     @SerializedName("time")
     private double time;
     @SerializedName("latitude")
@@ -15,20 +15,20 @@ public class VideoScanDetail {
     @SerializedName("metadata")
     private MetaData metaData;
 
-    public VideoScanDetail(String videoUuid, double time, double latitude, double longitude, MetaData metaData) {
-        this.videoUuid = videoUuid;
+    public VideoScanDetail(String videoName, double time, double latitude, double longitude, MetaData metaData) {
+        this.videoName = videoName;
         this.time = time;
         this.latitude = latitude;
         this.longitude = longitude;
         this.metaData = metaData;
     }
 
-    public String getVideoUuid() {
-        return videoUuid;
+    public String getVideoName() {
+        return videoName;
     }
 
-    public void setVideoUuid(String videoUuid) {
-        this.videoUuid = videoUuid;
+    public void setVideoName(String videoName) {
+        this.videoName = videoName;
     }
 
     public double getTime() {
