@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -20,7 +21,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import com.brandactif.scandemo.model.MediaScanResponse;
-import com.brandactif.scandemo.model.ScanResponse;
 import com.brandactif.scandemo.model.VideoScan;
 import com.brandactif.scandemo.model.VideoTimeRange;
 import com.brandactif.scandemo.network.APIClient;
@@ -30,6 +30,7 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -39,12 +40,12 @@ import retrofit2.Response;
 
 public class VideoActivity extends AppCompatActivity {
 
+    private final String TAG = "VideoActivity";
     private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private final String CONTENT_TYPE = "application/json";
 
     private String videoName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private int videoId;
-    private boolean isTimestamped = false;
 
     private APIInterface apiInterface;
 
@@ -52,12 +53,16 @@ public class VideoActivity extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationClient;
     private Location currentLocation;
 
-    private final String TAG = "VideoActivity";
     private VideoView mVideoView;
     private Button mBtnTapToBuy;
     private ListView mListView;
-    private ArrayList<String> mTimestamps;
+    private ArrayList<VideoTimeRange> mTimeRanges;
+    private ArrayList<String> mClickedTimestamps;
     private ArrayAdapter<String> mAdapter;
+
+    private Handler mHandler = new Handler();
+    private Runnable mRunnable;
+    private final int DELAY = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +74,6 @@ public class VideoActivity extends AppCompatActivity {
         Intent intent = getIntent();
         videoName = intent.getStringExtra("videoName");
         videoId = intent.getIntExtra("videoId", R.raw.the_wolf_of_wall_street);
-        isTimestamped = intent.getBooleanExtra("isTimestamped", false);
         String videoTitle = intent.getStringExtra("videoTitle");
 
         setTitle(videoTitle);
@@ -77,12 +81,10 @@ public class VideoActivity extends AppCompatActivity {
         mVideoView = findViewById(R.id.videoView);
         mBtnTapToBuy = findViewById(R.id.btnTapToBuy);
         mListView = findViewById(R.id.listView);
-        mTimestamps = new ArrayList<>();
+        mTimeRanges = new ArrayList<>();
+        mClickedTimestamps = new ArrayList<>();
 
-        if (isTimestamped) {
-            getVideoTimeRanges(videoName);
-            mListView.setVisibility(View.GONE);
-        }
+        getVideoTimeRanges(videoName);
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -109,12 +111,12 @@ public class VideoActivity extends AppCompatActivity {
 
         mAdapter = new ArrayAdapter<String>(this,
                     android.R.layout.simple_list_item_1,
-                mTimestamps);
+                mClickedTimestamps);
         mListView.setAdapter(mAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String selectedTimestamp = mTimestamps.get(position);
+                String selectedTimestamp = mClickedTimestamps.get(position);
                 VideoScan videoScan = new VideoScan(videoName,
                         Float.parseFloat(selectedTimestamp),
                         currentLocation.getLatitude(),
@@ -132,20 +134,36 @@ public class VideoActivity extends AppCompatActivity {
         mBtnTapToBuy.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                addTimestamp(mVideoView.getCurrentPosition());
+                if (mTimeRanges.size() > 1) {
+                    // Add to timestamp list
+                    addTimestamp(mVideoView.getCurrentPosition());
+                } else {
+                    // Redirect to URL immediately if only one time range
+                    if (mVideoView.isPlaying()) {
+                        float currPos = mVideoView.getCurrentPosition() / 1000.0f;
+                        String selectedTimestamp = Float.toString(currPos);
+                        VideoScan videoScan = new VideoScan(videoName,
+                                Float.parseFloat(selectedTimestamp),
+                                currentLocation.getLatitude(),
+                                currentLocation.getLongitude(),
+                                Utils.getMetaData(VideoActivity.this));
+                        createVideoScan(videoScan);
+                    }
+                }
             }
         });
     }
 
     private void addTimestamp(long currentPosition) {
         float timeStamp = mVideoView.getCurrentPosition()/1000.0f;
-        mTimestamps.add(Float.toString(timeStamp));
+        mClickedTimestamps.add(Float.toString(timeStamp));
         mAdapter.notifyDataSetChanged();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        mBtnTapToBuy.setVisibility(View.INVISIBLE);
         initializePlayer();
     }
 
@@ -168,10 +186,40 @@ public class VideoActivity extends AppCompatActivity {
         Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + videoId);
         mVideoView.setVideoURI(videoUri);
         mVideoView.start();
+
+        // Track video ppsition and hide/show red button according to timestamps
+        mHandler.postDelayed(mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                mHandler.postDelayed(this, DELAY);
+                if (mVideoView.isPlaying()) {
+                    float currPos = mVideoView.getCurrentPosition() / 1000.0f;
+                    Log.d(TAG, "Video current position = " + currPos);
+                    if (isShowRedButton(currPos)) {
+                        mBtnTapToBuy.setVisibility(View.VISIBLE);
+                    } else {
+                        mBtnTapToBuy.setVisibility(View.INVISIBLE);
+                    }
+                } else {
+                    mHandler.removeCallbacks(mRunnable);
+                }
+            }
+        }, DELAY);
     }
 
     private void releasePlayer() {
         mVideoView.stopPlayback();
+    }
+
+    private boolean isShowRedButton(float currentPosition) {
+        for (int i=0; i<mTimeRanges.size(); i++) {
+            VideoTimeRange range = mTimeRanges.get(i);
+            if (currentPosition >= range.getStartAt() &&
+                    currentPosition <= range.getEndAt()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void getVideoTimeRanges(String uuid) {
@@ -190,6 +238,7 @@ public class VideoActivity extends AppCompatActivity {
 
                 for (int i=0; i<resource.length; i++) {
                     VideoTimeRange tr = resource[i];
+                    mTimeRanges.add(tr);
                     Log.d(TAG, "startAt=" + tr.getStartAt() + ", endAt=" + tr.getEndAt());
                 }
             }

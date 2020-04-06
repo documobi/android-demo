@@ -22,14 +22,12 @@ class Movie {
     String videoName;
     int thumbnailId;
     int videoId;
-    boolean isTimestamped;      // Whether red button is timestamped for display
 
-    Movie(String title, String videoName, int thumbnailId, int videoId, boolean isTimestamped) {
+    Movie(String title, String videoName, int thumbnailId, int videoId) {
         this.title = title;
         this.videoName = videoName;
         this.thumbnailId = thumbnailId;
         this.videoId = videoId;
-        this.isTimestamped = isTimestamped;
     }
 }
 
@@ -120,14 +118,12 @@ public class VideoListActivity extends AppCompatActivity {
         arrayList.add(new Movie("The Wolf Of Wall Street",
                 "b5823bd3-aaf3-4031-a6a3-a7331c835e52",
                 R.mipmap.wows,
-                R.raw.the_wolf_of_wall_street,
-                false));
+                R.raw.the_wolf_of_wall_street));
 
         arrayList.add(new Movie("The Matrix",
-                "b5823bd3-aaf3-4031-a6a3-a7331c835e52",
+                "516e4592-d18b-4f3f-85e7-36c300bd07cd",
                 R.mipmap.matrix,
-                R.raw.matrix,
-                true));
+                R.raw.matrix));
         CustomAdapter customAdapter = new CustomAdapter(this, arrayList);
         listView.setAdapter(customAdapter);
 
@@ -142,7 +138,6 @@ public class VideoListActivity extends AppCompatActivity {
             intent.putExtra("videoTitle", selectedMovie.title);
             intent.putExtra("videoName", selectedMovie.videoName);
             intent.putExtra("videoId", selectedMovie.videoId);
-            intent.putExtra("isTimestamped", selectedMovie.isTimestamped);
             startActivity(intent);
         });
     }
