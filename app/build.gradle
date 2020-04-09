@@ -42,6 +42,9 @@ android {
         changi {
             applicationIdSuffix ".changi"
         }
+        hotstar {
+            applicationIdSuffix ".hotstar"
+        }
     }
 
     compileOptions {

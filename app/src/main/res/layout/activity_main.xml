@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:background="@color/colorBackground"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center_horizontal"
@@ -29,6 +30,7 @@
         android:layout_width="250dp"
         android:layout_height="250dp"
         android:layout_marginTop="20dp"
+        android:tint="@color/colorBackground"
         android:background="@drawable/round_button"
         android:padding="40dp"
         android:scaleType="fitCenter"
@@ -68,7 +70,7 @@
             android:layout_weight="1"
             android:background="@drawable/rounded_button"
             android:text="@string/switch_to_radio"
-            android:textColor="@android:color/white"
+            android:textColor="@color/colorButtonTitle"
             android:textSize="16sp" />
 
         <Space
@@ -83,7 +85,7 @@
             android:layout_weight="1"
             android:background="@drawable/rounded_button"
             android:text="@string/switch_to_tv"
-            android:textColor="@android:color/white"
+            android:textColor="@color/colorButtonTitle"
             android:textSize="16sp" />
     </LinearLayout>
 
@@ -96,7 +98,7 @@
         android:layout_marginEnd="24dp"
         android:background="@drawable/rounded_button"
         android:text="@string/videos"
-        android:textColor="@android:color/white"
+        android:textColor="@color/colorButtonTitle"
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
