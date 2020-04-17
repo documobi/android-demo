@@ -30,7 +30,6 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -41,9 +40,9 @@ import retrofit2.Response;
 public class VideoActivity extends AppCompatActivity {
 
     private final String TAG = "VideoActivity";
-    private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private final String CONTENT_TYPE = "application/json";
 
+    private String apiKey = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private String videoName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private int videoId;
 
@@ -69,11 +68,12 @@ public class VideoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
 
-        apiInterface = APIClient.getClient().create(APIInterface.class);
+        apiInterface = APIClient.getClient(getString(R.string.base_url)).create(APIInterface.class);
+        apiKey = getString(R.string.api_key);
 
         Intent intent = getIntent();
         videoName = intent.getStringExtra("videoName");
-        videoId = intent.getIntExtra("videoId", R.raw.the_wolf_of_wall_street);
+        videoId = intent.getIntExtra("videoId", R.raw.mediacorp);
         String videoTitle = intent.getStringExtra("videoTitle");
 
         setTitle(videoTitle);
@@ -224,7 +224,7 @@ public class VideoActivity extends AppCompatActivity {
 
     private void getVideoTimeRanges(String uuid) {
         Log.d(TAG, "Get timestamps: " + uuid);
-        Call<VideoTimeRange[]> call = apiInterface.getVideoTimeRanges(API_KEY, CONTENT_TYPE, uuid);
+        Call<VideoTimeRange[]> call = apiInterface.getVideoTimeRanges(apiKey, CONTENT_TYPE, uuid);
         call.enqueue(new Callback<VideoTimeRange[]>() {
             @Override
             public void onResponse(Call<VideoTimeRange[]> call, Response<VideoTimeRange[]> response) {
@@ -253,7 +253,7 @@ public class VideoActivity extends AppCompatActivity {
     }
 
     private void createVideoScan(VideoScan videoScan) {
-        Call<MediaScanResponse> call = apiInterface.createVideoScan(API_KEY, CONTENT_TYPE, videoScan);
+        Call<MediaScanResponse> call = apiInterface.createVideoScan(apiKey, CONTENT_TYPE, videoScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {

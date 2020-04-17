@@ -124,6 +124,12 @@ public class VideoListActivity extends AppCompatActivity {
                 "516e4592-d18b-4f3f-85e7-36c300bd07cd",
                 R.mipmap.matrix,
                 R.raw.matrix));
+
+        arrayList.add(new Movie("Mediacorp",
+                getString(R.string.video_uuid),
+                R.mipmap.matrix,
+                R.raw.mediacorp));
+
         CustomAdapter customAdapter = new CustomAdapter(this, arrayList);
         listView.setAdapter(customAdapter);
 

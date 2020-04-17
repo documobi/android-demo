@@ -48,6 +48,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -79,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
     private final String KEY_SCAN_UUID = "scan_uuid";
     private final String KEY_PRESIGNED_URL = "presigned_url";
 
-    private final String API_KEY = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
+    private String apiKey = "6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09";
     private String tvName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private String radioName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private boolean isSettingsEnabled = false;
@@ -119,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        apiKey = getString(R.string.api_key);
         tvName = getString(R.string.tv_uuid);
         radioName = getString(R.string.radio_uuid);
 
@@ -196,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
         btnLeft.setText(R.string.switch_to_radio);
         btnRight.setText(R.string.switch_to_tv);
 
-        apiInterface = APIClient.getClient().create(APIInterface.class);
+        apiInterface = APIClient.getClient(getString(R.string.base_url)).create(APIInterface.class);
 
         if (isSettingsEnabled) {
             btnSettings.setVisibility(View.VISIBLE);
@@ -511,7 +515,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void getPresignedUrl(PresignedUrl presignedUrl) {
-        Call<PresignedUrlResponse> call = apiInterface.getPresignedUrl(API_KEY, CONTENT_TYPE, presignedUrl);
+        Call<PresignedUrlResponse> call = apiInterface.getPresignedUrl(apiKey, CONTENT_TYPE, presignedUrl);
         call.enqueue(new Callback<PresignedUrlResponse>() {
             @Override
             public void onResponse(Call<PresignedUrlResponse> call, Response<PresignedUrlResponse> response) {
@@ -589,7 +593,7 @@ public class MainActivity extends AppCompatActivity {
 
     void createScan(Scan scan) {
         Log.d(TAG, "Create scan: " + scan.toString());
-        Call<CreateScanResponse> call = apiInterface.createScan(API_KEY, CONTENT_TYPE, scan);
+        Call<CreateScanResponse> call = apiInterface.createScan(apiKey, CONTENT_TYPE, scan);
         call.enqueue(new Callback<CreateScanResponse>() {
             @Override
             public void onResponse(Call<CreateScanResponse> call, Response<CreateScanResponse> response) {
@@ -607,7 +611,12 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        getScan(uuid);
+                        try {
+                            String encodedUuid = URLEncoder.encode(uuid, StandardCharsets.UTF_8.toString());
+                            getScan(encodedUuid);
+                        } catch (UnsupportedEncodingException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }, GET_SCAN_DELAY);
             }
@@ -622,7 +631,7 @@ public class MainActivity extends AppCompatActivity {
 
     void getScan(String uuid) {
         Log.d(TAG, "Get scan: " + uuid);
-        Call<ScanResponse> call = apiInterface.getScan(API_KEY, CONTENT_TYPE, uuid);
+        Call<ScanResponse> call = apiInterface.getScan(apiKey, CONTENT_TYPE, uuid);
         call.enqueue(new Callback<ScanResponse>() {
             @Override
             public void onResponse(Call<ScanResponse> call, Response<ScanResponse> response) {
@@ -657,7 +666,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void createRadioScan(RadioScan radioScan) {
-        Call<MediaScanResponse> call = apiInterface.createRadioScan(API_KEY, CONTENT_TYPE, radioScan);
+        Call<MediaScanResponse> call = apiInterface.createRadioScan(apiKey, CONTENT_TYPE, radioScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {
@@ -690,7 +699,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void createTvScan(TvScan tvScan) {
-        Call<MediaScanResponse> call = apiInterface.createTvScan(API_KEY, CONTENT_TYPE, tvScan);
+        Call<MediaScanResponse> call = apiInterface.createTvScan(apiKey, CONTENT_TYPE, tvScan);
         call.enqueue(new Callback<MediaScanResponse>() {
             @Override
             public void onResponse(Call<MediaScanResponse> call, Response<MediaScanResponse> response) {

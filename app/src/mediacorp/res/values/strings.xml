@@ -1,8 +1,10 @@
 <resources>
     <string name="app_name">MediaCorp</string>
-    <string name="tv_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
-    <string name="radio_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
-    <string name="video_uuid">7139d852-dd99-46d7-8f86-db3d579b9e52</string>
+    <string name="base_url">https://portal-api.brandactif.com/</string>
+    <string name="api_key">a6d5204f6d4e8a78e9a5d70b44ebb15264de41b906ee70996fe74fec3bb5ce8c</string>
+    <string name="tv_uuid">Channel 5</string>
+    <string name="radio_uuid">Class 95</string>
+    <string name="video_uuid">Mediacorp is Made For You</string>
     <string name="default_scan_type">tv</string>
     <string name="settings_enabled">false</string>
 </resources>

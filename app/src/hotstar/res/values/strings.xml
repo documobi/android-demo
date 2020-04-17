@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Hotstar</string>
+    <string name="base_url">https://portal-api-staging.brandactif.com/</string>
+    <string name="api_key">6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09</string>
     <string name="tv_uuid">5a97f6b0-9400-486e-a36b-79864181a890</string>
     <string name="radio_uuid">01754efd-545c-456e-88a6-5dcf7cd906d0</string>
     <string name="video_uuid">58ab19b4-2c25-47c1-88ab-baa094bdebb6</string>

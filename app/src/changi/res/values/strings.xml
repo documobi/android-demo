@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Changi</string>
+    <string name="base_url">https://portal-api-staging.brandactif.com/</string>
+    <string name="api_key">6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09</string>
     <string name="tv_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>
     <string name="radio_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>
     <string name="video_uuid">fef8bb8d-d0da-47b5-98b8-9e8b45bd8649</string>

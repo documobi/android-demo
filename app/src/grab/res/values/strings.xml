@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Grab</string>
+    <string name="base_url">https://portal-api-staging.brandactif.com/api/v2</string>
+    <string name="api_key">6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09</string>
     <string name="tv_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
     <string name="radio_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
     <string name="video_uuid">f4ceba45-361b-4251-943f-f0e9b8f1101b</string>
