@@ -18,6 +18,14 @@ public class Utils {
         return iso8601Date;
     }
 
+    public static String getSerial() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.GINGERBREAD_MR1) {
+            return Build.getSerial();
+        } else {
+            return "";
+        }
+    }
+
     public static MetaData getMetaData(Context context) {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         String carrierName = telephonyManager.getNetworkOperatorName();
@@ -51,7 +59,7 @@ public class Utils {
                 networkType = "Unknown";
         }
 
-        return new MetaData(Build.getSerial(),
+        return new MetaData(Utils.getSerial(),
                 "Android",
                 Build.VERSION.RELEASE,
                 "Chrome",

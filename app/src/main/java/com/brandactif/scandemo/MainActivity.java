@@ -104,9 +104,10 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView imgLogo;
     private ImageButton btnMain;
-    private Button btnLeft;
-    private Button btnRight;
-    private Button btnVideo;
+    private ImageButton btnTv;
+    private ImageButton btnRadio;
+    private ImageButton btnScan;
+    private ImageButton btnVideo;
     private ImageButton btnSettings;
 
     private APIInterface apiInterface;
@@ -191,21 +192,20 @@ public class MainActivity extends AppCompatActivity {
 
         imgLogo = findViewById(R.id.imgLogo);
         btnMain = findViewById(R.id.btnMain);
-        btnLeft = findViewById(R.id.btnLeft);
-        btnRight = findViewById(R.id.btnRight);
+        btnTv = findViewById(R.id.btnTv);
+        btnRadio = findViewById(R.id.btnRadio);
         btnVideo = findViewById(R.id.btnVideo);
+        btnScan = findViewById(R.id.btnScan);
         btnSettings = findViewById(R.id.btnSettings);
 
         btnMain.setImageResource(R.mipmap.button);
-        btnLeft.setText(R.string.switch_to_radio);
-        btnRight.setText(R.string.switch_to_tv);
 
         apiInterface = APIClient.getClient(getString(R.string.base_url)).create(APIInterface.class);
 
         if (isSettingsEnabled) {
             btnSettings.setVisibility(View.VISIBLE);
         } else {
-            btnSettings.setVisibility(View.INVISIBLE);
+            btnSettings.setVisibility(View.GONE);
         }
 
         updateButtons();
@@ -217,24 +217,31 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btnLeft.setOnClickListener(new View.OnClickListener() {
+        btnTv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                leftButtonTapped();
+                modeButtonTapped(ScanType.TV);
             }
         });
 
-        btnRight.setOnClickListener(new View.OnClickListener() {
+        btnRadio.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                rightButtonTapped();
+                modeButtonTapped(ScanType.RADIO);
             }
         });
 
         btnVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                videoButtonTapped();
+                modeButtonTapped(ScanType.VIDEO);
+            }
+        });
+
+        btnScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                modeButtonTapped(ScanType.SCANNER);
             }
         });
 
@@ -379,23 +386,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void leftButtonTapped() {
-        ScanType prevType = mainButtonType;
-        mainButtonType = leftButtonType;
-        leftButtonType = prevType;
-        updateButtons();
-    }
-
-    private void rightButtonTapped() {
-        ScanType prevType = mainButtonType;
-        mainButtonType = rightButtonType;
-        rightButtonType = prevType;
-        updateButtons();
-    }
-
-    private void videoButtonTapped() {
-        Intent videoActivity = new Intent(getApplicationContext(), VideoListActivity.class);
-        startActivity(videoActivity);
+    private void modeButtonTapped(ScanType scanType) {
+        switch (scanType) {
+            case VIDEO:
+                Intent videoActivity = new Intent(getApplicationContext(), VideoListActivity.class);
+                startActivity(videoActivity);
+                break;
+            default:
+                mainButtonType = scanType;
+                updateButtons();
+        }
     }
 
     private void settingsButtonTapped() {
@@ -405,37 +405,13 @@ public class MainActivity extends AppCompatActivity {
     private void updateButtons() {
         switch (mainButtonType) {
             case SCANNER:
-                btnMain.setImageResource(R.mipmap.button);
+                btnMain.setImageResource(R.mipmap.scan);
                 break;
             case RADIO:
                 btnMain.setImageResource(R.mipmap.radio);
                 break;
             case TV:
                 btnMain.setImageResource(R.mipmap.tv);
-                break;
-        }
-
-        switch (leftButtonType) {
-            case SCANNER:
-                btnLeft.setText(R.string.switch_to_scanner);
-                break;
-            case RADIO:
-                btnLeft.setText(R.string.switch_to_radio);
-                break;
-            case TV:
-                btnLeft.setText(R.string.switch_to_tv);
-                break;
-        }
-
-        switch (rightButtonType) {
-            case SCANNER:
-                btnRight.setText(R.string.switch_to_scanner);
-                break;
-            case RADIO:
-                btnRight.setText(R.string.switch_to_radio);
-                break;
-            case TV:
-                btnRight.setText(R.string.switch_to_tv);
                 break;
         }
     }
@@ -573,7 +549,7 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
-                if (response.code() != 201) {
+                if (response.code() != 200) {
                     Log.d(TAG, "uploadToS3 returned response " + response.code());
                     return;
                 }
@@ -597,7 +573,7 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<CreateScanResponse>() {
             @Override
             public void onResponse(Call<CreateScanResponse> call, Response<CreateScanResponse> response) {
-                if (response.code() != 201) {
+                if (response.code() != 202) {
                     Log.d(TAG, "createScan returned response " + response.code());
                     return;
                 }

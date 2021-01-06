@@ -2,9 +2,9 @@
     <string name="app_name">BrandActif</string>
     <string name="base_url">https://portal-api-staging.brandactif.com/</string>
     <string name="api_key">6c7e04489c2ce3ddebc062c992a1b0802b3be18c7bc4ce950ac430e5e2420c09</string>
-    <string name="tv_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
-    <string name="radio_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
-    <string name="video_uuid">b5823bd3-aaf3-4031-a6a3-a7331c835e52</string>
-    <string name="default_scan_type">scanner</string>
-    <string name="settings_enabled">true</string>
+    <string name="tv_uuid">BrandActif TV</string>
+    <string name="radio_uuid">BrandActif Radio</string>
+    <string name="video_uuid">BrandActif Video</string>
+    <string name="default_scan_type">tv</string>
+    <string name="settings_enabled">false</string>
 </resources>
