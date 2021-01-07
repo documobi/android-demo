@@ -271,8 +271,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-        @Override
+    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
@@ -359,7 +358,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleIntent(Intent intent) {
-        Log.d(TAG, "Intent action: " + intent.getAction() + ", data: " + intent.getDataString());
+        Log.d(TAG, "Intent action = " + intent.getAction());
+        if (intent.getAction().equals(Intent.ACTION_VIEW)) {
+            if (intent.getDataString().equals("https://www.brandactif.com/scan")) {
+                // Open tap function
+                double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
+                double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
+
+                Log.d(TAG, "Doing TV scan!");
+                TvScan tvScan = new TvScan(tvName,
+                        Utils.getIso8601Date(),
+                        latitude,
+                        longitude,
+                        Utils.getMetaData(MainActivity.this));
+                createTvScan(tvScan);
+            }
+        }
     }
 
     private Bitmap resizeImage(Bitmap image, int maxWidth, int maxHeight) {
