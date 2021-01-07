@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "932113768546",
+    "project_id": "brandactif-5801d",
+    "storage_bucket": "brandactif-5801d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:932113768546:android:bdb09559816ae2701a713b",
+        "android_client_info": {
+          "package_name": "com.brandactif.scandemo.brandactif"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "932113768546-4kt969h019a3thec4ee7ar4en7eto1kh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOv03B3nW12gtWJpuVX4i00PpmtBmSClY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "932113768546-4kt969h019a3thec4ee7ar4en7eto1kh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

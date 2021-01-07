@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.brandactif.scandemo">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -16,24 +17,38 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true">
 
+        <meta-data
+            android:name="com.google.android.actions"
+            android:resource="@xml/actions" />
+
         <activity
             android:name=".MainActivity"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme"
+            android:exported="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <intent-filter tools:targetApi="m">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.brandactif.com" android:pathPrefix="/scan" />
+                <data android:scheme="brandactif" android:host="scan" />
+            </intent-filter>
+
         </activity>
 
         <activity
             android:name=".VideoListActivity"
             android:label="@string/videos"
-            android:theme="@style/Theme.AppCompat.Light"></activity>
+            android:theme="@style/Theme.AppCompat.Light" />
 
         <activity
             android:name=".VideoActivity"
-            android:theme="@style/Theme.AppCompat.Light"></activity>
+            android:theme="@style/Theme.AppCompat.Light" />
 
         <provider
             android:name=".utils.GenericFileProvider"

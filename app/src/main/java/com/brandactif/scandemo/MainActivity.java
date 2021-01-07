@@ -3,6 +3,7 @@ package com.brandactif.scandemo;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.assist.AssistContent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -252,9 +253,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Handle intents
+        Intent intent = getIntent();
+        if (intent != null) {
+            handleIntent(intent);
+        }
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Handle intents
+        Intent intent = getIntent();
+        if (intent != null) {
+            handleIntent(intent);
+        }
+    }
+
+
+        @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
@@ -332,6 +350,16 @@ public class MainActivity extends AppCompatActivity {
 
         // Upload to S3
         uploadToS3(destination.getAbsolutePath());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+        Log.d(TAG, "Intent action: " + intent.getAction() + ", data: " + intent.getDataString());
     }
 
     private Bitmap resizeImage(Bitmap image, int maxWidth, int maxHeight) {
