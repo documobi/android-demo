@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     enum ScanType {
-        SCANNER, TV, RADIO, VIDEO
+        SCAN, TV, RADIO, VIDEO
     }
 
     private final String TAG = "MainActivity";
@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private String tvName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private String radioName = "b5823bd3-aaf3-4031-a6a3-a7331c835e52";
     private boolean isSettingsEnabled = false;
-    private ScanType defaultScanType = ScanType.SCANNER;
+    private ScanType defaultScanType = ScanType.SCAN;
 
     private final String CONTENT_TYPE = "application/json";
     private final int MAX_IMAGE_WIDTH = 600;
@@ -99,9 +99,7 @@ public class MainActivity extends AppCompatActivity {
     private String logo = "";
     private String currentPhotoPath = "";
 
-    private ScanType mainButtonType = ScanType.SCANNER;
-    private ScanType leftButtonType = ScanType.RADIO;
-    private ScanType rightButtonType = ScanType.TV;
+    private ScanType mainButtonType = ScanType.SCAN;
 
     private ImageView imgLogo;
     private ImageButton btnMain;
@@ -132,27 +130,19 @@ public class MainActivity extends AppCompatActivity {
             case "tv":
                 defaultScanType = ScanType.TV;
                 mainButtonType = defaultScanType;
-                leftButtonType = ScanType.RADIO;
-                rightButtonType = ScanType.SCANNER;
                 break;
             case "video":
                 defaultScanType = ScanType.VIDEO;
                 mainButtonType = defaultScanType;
-                leftButtonType = ScanType.TV;
-                rightButtonType = ScanType.RADIO;
                 break;
             case "radio":
                 defaultScanType = ScanType.RADIO;
                 mainButtonType = defaultScanType;
-                leftButtonType = ScanType.TV;
-                rightButtonType = ScanType.SCANNER;
                 break;
             case "scanner":
             default:
-                defaultScanType = ScanType.SCANNER;
+                defaultScanType = ScanType.SCAN;
                 mainButtonType = defaultScanType;
-                leftButtonType = ScanType.TV;
-                rightButtonType = ScanType.RADIO;
                 break;
         }
 
@@ -242,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
         btnScan.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                modeButtonTapped(ScanType.SCANNER);
+                modeButtonTapped(ScanType.SCAN);
             }
         });
 
@@ -358,20 +348,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleIntent(Intent intent) {
-        Log.d(TAG, "Intent action = " + intent.getAction());
-        if (intent.getAction().equals(Intent.ACTION_VIEW)) {
-            if (intent.getDataString().equals("https://www.brandactif.com/scan")) {
-                // Open tap function
+        String action = intent.getAction();
+        Log.d(TAG, "Intent action = " + action);
+        if (action.equals(Intent.ACTION_VIEW)) {
+            Log.d(TAG, "Intent data string = " + intent.getDataString());
+            if (intent.getDataString().contains("https://www.brandactif.com/scan")) {
                 double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
                 double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
-
-                Log.d(TAG, "Doing TV scan!");
-                TvScan tvScan = new TvScan(tvName,
-                        Utils.getIso8601Date(),
-                        latitude,
-                        longitude,
-                        Utils.getMetaData(MainActivity.this));
-                createTvScan(tvScan);
+                Uri data = intent.getData();
+                String feature = data.getQueryParameter("appFeature");
+                Log.d(TAG, "Feature = " + feature);
+                switch (feature) {
+                    case "TV":
+                        Log.d(TAG, "Doing TV scan!");
+                        TvScan tvScan = new TvScan(tvName,
+                                Utils.getIso8601Date(),
+                                latitude,
+                                longitude,
+                                Utils.getMetaData(MainActivity.this));
+                        createTvScan(tvScan);
+                        break;
+                    case "RADIO":
+                        Log.d(TAG, "Doing Radio scan!");
+                        RadioScan radioScan = new RadioScan(radioName,
+                                Utils.getIso8601Date(),
+                                latitude,
+                                longitude,
+                                Utils.getMetaData(MainActivity.this));
+                        createRadioScan(radioScan);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
@@ -402,7 +410,7 @@ public class MainActivity extends AppCompatActivity {
         double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
 
         switch (mainButtonType) {
-            case SCANNER:
+            case SCAN:
                 Log.d(TAG, "Doing image scan!");
                 getPresignedUrl(new PresignedUrl("scan", IMAGE_FILENAME));
                 selectImageInput();
@@ -446,7 +454,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateButtons() {
         switch (mainButtonType) {
-            case SCANNER:
+            case SCAN:
                 btnMain.setImageResource(R.mipmap.scan);
                 break;
             case RADIO:

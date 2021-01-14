@@ -1,9 +1,19 @@
 <?xml version ="1.0" encoding ="utf-8"?><!--  Learn More about how to use App Actions: https://developer.android.com/guide/actions/index.html -->
 <actions>
     <action intentName="actions.intent.OPEN_APP_FEATURE">
-        <!-- Provide a fallback fulfillment with no required parameters. For example, to your app search or router deeplink -->
-        <fulfillment
-            fulfillmentMode="actions.fulfillment.DEEPLINK"
-            urlTemplate="https://www.brandactif.com/scan" />
+        <!-- Each parameter can reference an entity set using a custom ID. -->
+        <parameter name="feature">
+            <entity-set-reference entitySetId="FeatureEntitySet"/>
+        </parameter>
+
+        <fulfillment urlTemplate="https://www.brandactif.com/scan{?appFeature}">
+            <parameter-mapping intentParameter="feature" urlParameter="appFeature" />
+        </fulfillment>
     </action>
+    <entity-set entitySetId="FeatureEntitySet">
+        <entity identifier="TV" name="tv"/>
+        <entity identifier="RADIO" name="radio"/>
+        <entity identifier="VIDEO" name="video"/>
+        <entity identifier="SCAN" name="scan"/>
+    </entity-set>
 </actions>
