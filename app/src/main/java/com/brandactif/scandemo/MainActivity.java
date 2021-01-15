@@ -355,6 +355,17 @@ public class MainActivity extends AppCompatActivity {
             if (intent.getDataString().contains("https://www.brandactif.com/scan")) {
                 double latitude = currentLocation != null ? currentLocation.getLatitude() : 0.0;
                 double longitude = currentLocation != null ? currentLocation.getLongitude() : 0.0;
+
+                Log.d(TAG, "Doing TV scan!");
+                TvScan tvScan = new TvScan(tvName,
+                        Utils.getIso8601Date(),
+                        latitude,
+                        longitude,
+                        Utils.getMetaData(MainActivity.this));
+                createTvScan(tvScan);
+
+
+/*
                 Uri data = intent.getData();
                 String feature = data.getQueryParameter("appFeature");
                 Log.d(TAG, "Feature = " + feature);
@@ -380,6 +391,7 @@ public class MainActivity extends AppCompatActivity {
                     default:
                         break;
                 }
+                */
             }
         }
     }
